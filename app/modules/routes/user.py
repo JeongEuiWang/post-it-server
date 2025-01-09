@@ -1,7 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends, Request, Response
+from fastapi import APIRouter, HTTPException, Depends, Request
 from app.modules.models import User
 from app.core.database import get_db
-from fastapi.responses import JSONResponse
 from app.modules.schemas import LoginResponse
 from app.modules.service import verify_google_oauth
 from sqlalchemy.orm import Session
@@ -21,7 +20,7 @@ async def google_login(request: Request, db: Session = Depends(get_db)):
     if not user_info:
         raise HTTPException(status_code=401, detail="Invalid id_token")
 
-    user = db.query(User).filter(User.email == user_info["email"]).first()
+    user = db.query(User).filter(User.email.is_(user_info.get("email"))).first()
     if not user:
         user = User(
             google_id=user_info["sub"],

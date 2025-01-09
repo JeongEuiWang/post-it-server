@@ -1,20 +1,24 @@
-from fastapi import APIRouter, HTTPException, Depends, Path, Request
+from fastapi import APIRouter, HTTPException, Depends, Path, Query, Header
 from app.modules.models import User, Category
+from fastapi.responses import JSONResponse
+from app.modules.service import (verify_google_oauth, create_gmail_service, verify_google_access)
 from app.core.database import get_db
-from app.modules.schemas import (CreateCategoryRequest,
+from app.modules.schemas import (BaseCategorySchema,
+                                 CreateCategoryRequest,
                                  CreateCategoryResponse,
                                  UpdateCategoryRequest,
                                  UpdateCategoryResponse,
                                  DeleteCategoryRequest,
-                                 DeleteCategoryResponse,
-                                 GetCategoriesRequest,
-                                 GetCategoriesResponse)
+                                 DeleteCategoryResponse)
 from sqlalchemy.orm import Session
+from dateutil import parser
+from datetime import datetime, timezone, timedelta
+import pandas as pd
 
 router = APIRouter()
 
 
-@router.post('/', response_model=CreateCategoryResponse)
+@router.post('', response_model=CreateCategoryResponse)
 async def create_category(
         request: CreateCategoryRequest,
         db: Session = Depends(get_db)
@@ -139,14 +143,12 @@ async def delete_category(
     )
 
 
-@router.get('/categories', response_model=GetCategoriesResponse)
+@router.get('/categories', response_model=list[BaseCategorySchema])
 async def get_categories(
-        request: GetCategoriesRequest,
+        user_id: int = Query(..., alias="userId", title="요청 사용자"),
         db: Session = Depends(get_db)
 ):
     # 1. 카테고리 존재 여부 확인
-    categories = db.query(Category).filter(Category.user_id.is_(request.userId)).all()
+    categories = db.query(Category).filter(Category.user_id.is_(user_id)).all()
 
-    return GetCategoriesResponse(
-        categories=categories,
-    )
+    return categories

@@ -44,11 +44,3 @@ class DeleteCategoryRequest(BaseModel):
 
 class DeleteCategoryResponse(BaseModel):
     success: bool = True
-
-
-class GetCategoriesRequest(BaseModel):
-    userId: int = Field(..., title="요청 사용자의 ID")
-
-
-class GetCategoriesResponse(BaseModel):
-    categories: list[BaseCategorySchema] = Field(..., title="카테고리 목록")

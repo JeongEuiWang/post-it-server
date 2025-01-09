@@ -5,5 +5,4 @@ from .category import (CreateCategoryRequest,
                        UpdateCategoryResponse,
                        DeleteCategoryRequest,
                        DeleteCategoryResponse,
-                       GetCategoriesRequest,
-                       GetCategoriesResponse)
+                       BaseCategorySchema)
