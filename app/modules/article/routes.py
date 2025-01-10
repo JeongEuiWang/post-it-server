@@ -1,10 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, Header, Path
-from app.modules.models import User, Category
 from fastapi.responses import JSONResponse
-from app.modules.service import (create_gmail_service, verify_google_access)
+from app.modules.category.models import Category
+from app.utils.gmail import create_gmail_service
+from app.utils.google_auth import verify_google_access
+from app.modules.article.service import parse_base_message_service
 from app.core.database import get_db
 from sqlalchemy.orm import Session
-import pandas as pd
+from app.utils.validate_header import validate_header
+from app.modules.user.models import User
 
 router = APIRouter()
 
@@ -16,11 +19,10 @@ async def get_article_list(
         authorization: str = Header(None),
         db: Session = Depends(get_db)
 ):
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Authorization header missing")
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid Authorization header format")
+    try:
+        validate_header(authorization)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
 
     token = authorization[len("Bearer "):]  # "Bearer " 제거하여 토큰 추출
 
@@ -38,6 +40,7 @@ async def get_article_list(
     category = db.query(Category).filter(Category.id.is_(category_id)).first()
 
     query = f"from:{category.from_email}" if category.from_email else ""
+    # 전체 메일 조회
     results = gmail_service.users().messages().list(userId=request_user.google_id, q=query).execute()
     messages = results["messages"]
     message_detail_list = []
@@ -46,18 +49,11 @@ async def get_article_list(
         if "html" not in message_detail["payload"]["mimeType"]:
             continue
         else:
-            headers = message_detail["payload"]["headers"]
-            date = message_detail["internalDate"]
-            utc_date = pd.to_datetime(float(date), unit='ms', utc=True)
-            kst_date = utc_date.tz_convert("Asia/Seoul").date()
-            payload = {
-                "title": next((header["value"] for header in headers if header.get("name") == "Subject"), "-"),
-                "snippet": message_detail["snippet"] or "-",
-                "date": kst_date.isoformat(),
-                "message_id": message_detail["id"]
-            }
+            payload = parse_base_message_service(message_detail)
             message_detail_list.append(payload)
+
     return JSONResponse(content=message_detail_list, status_code=200)
+
 
 @router.get('/{message_id}')
 async def get_article_detail(
@@ -67,11 +63,10 @@ async def get_article_detail(
         authorization: str = Header(None),
         db: Session = Depends(get_db)
 ):
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Authorization header missing")
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid Authorization header format")
+    try:
+        validate_header(authorization)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
 
     token = authorization[len("Bearer "):]  # "Bearer " 제거하여 토큰 추출
 
@@ -89,18 +84,12 @@ async def get_article_detail(
     category = db.query(Category).filter(Category.id.is_(category_id)).first()
 
     message_detail = gmail_service.users().messages().get(userId=request_user.google_id, id=message_id).execute()
-    headers = message_detail["payload"]["headers"]
+    payload = parse_base_message_service(message_detail)
     content = message_detail["payload"]["body"]["data"]
-
-    date = message_detail["internalDate"]
-    utc_date = pd.to_datetime(float(date), unit='ms', utc=True)
-    kst_date = utc_date.tz_convert("Asia/Seoul").date()
-    payload = {
+    message_detail_payload = {
+        **payload,
         "category_name": category.name,
-        "title": next((header["value"] for header in headers if header.get("name") == "Subject"), "-"),
-        "snippet": message_detail["snippet"] or "-",
-        "date": kst_date.isoformat(),
         "content": content
     }
 
-    return JSONResponse(content=payload, status_code=200)
+    return JSONResponse(content=message_detail_payload, status_code=200)

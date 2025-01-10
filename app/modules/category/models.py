@@ -8,3 +8,4 @@ class Category(Base):
     name = Column(String, unique=True, nullable=False)
     user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     from_email = Column(String, unique=True, nullable=False)
+
