@@ -13,3 +13,4 @@ def parse_base_message_service(message):
         "message_id": message["id"]
     }
     return payload
+

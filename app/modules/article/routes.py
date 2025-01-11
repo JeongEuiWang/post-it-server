@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, Header, Path
 from fastapi.responses import JSONResponse
-from app.modules.category.models import Category
 from app.utils.gmail import create_gmail_service
 from app.utils.google_auth import verify_google_access
 from app.modules.article.service import parse_base_message_service
 from app.core.database import get_db
 from sqlalchemy.orm import Session
 from app.utils.validate_header import validate_header
-from app.modules.user.models import User
+from app.modules.user.service import get_user_by_id
+from app.modules.category.service import get_category_by_id
 
 router = APIRouter()
 
@@ -28,16 +28,16 @@ async def get_article_list(
 
     google_auth = verify_google_access(token)
 
-    request_user = db.query(User).filter(User.id.is_(user_id)).first()
+    request_user = get_user_by_id(db=db, user_id=user_id)
 
     if not request_user:
         raise HTTPException(status_code=404, detail="User not found")
 
     if request_user.email != google_auth.get("email"):
-        raise HTTPException(status_code=404, detail="Authorization Failed")
+        raise HTTPException(status_code=401, detail="Authorization Failed")
 
     gmail_service = create_gmail_service(token)
-    category = db.query(Category).filter(Category.id.is_(category_id)).first()
+    category = get_category_by_id(db=db, category_id=category_id)
 
     query = f"from:{category.from_email}" if category.from_email else ""
     # 전체 메일 조회
@@ -72,16 +72,16 @@ async def get_article_detail(
 
     google_auth = verify_google_access(token)
 
-    request_user = db.query(User).filter(User.id.is_(user_id)).first()
+    request_user = get_user_by_id(db=db, user_id=user_id)
 
     if not request_user:
         raise HTTPException(status_code=404, detail="User not found")
 
     if request_user.email != google_auth.get("email"):
-        raise HTTPException(status_code=404, detail="Authorization Failed")
+        raise HTTPException(status_code=401, detail="Authorization Failed")
 
     gmail_service = create_gmail_service(token)
-    category = db.query(Category).filter(Category.id.is_(category_id)).first()
+    category = get_category_by_id(db=db, category_id=category_id)
 
     message_detail = gmail_service.users().messages().get(userId=request_user.google_id, id=message_id).execute()
     payload = parse_base_message_service(message_detail)
