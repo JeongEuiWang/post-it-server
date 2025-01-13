@@ -16,7 +16,7 @@ def parse_base_message_service(message):
 
 
 def find_message_content_html(message_payload) -> str | None:
-    message_parts = message_payload["parts"]
+    message_parts = message_payload.get("parts")
     if not message_parts or len(message_parts) == 0:
         # parts가 존재하지 않을 경우
         message_body = message_payload["body"]

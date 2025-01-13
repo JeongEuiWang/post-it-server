@@ -27,7 +27,7 @@ def request_google_auth(params: dict):
 
 def parse_google_user(token_info):
     return {
-        "user_id": token_info.get("user_id"),
+        "user_id": token_info.get("sub"),
         "email": token_info.get("email"),
         "email_verified": token_info.get("email_verified"),
         "expires_in": token_info.get("expires_in")

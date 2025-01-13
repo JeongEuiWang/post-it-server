@@ -21,6 +21,6 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
 
     user = get_user_by_email(db=db, email=user_info.get("email"))
     if not user:
-        new_user = create_user(db=db, google_id=user_info["sub"], email=user_info["email"])
+        new_user = create_user(db=db, google_id=user_info["user_id"], email=user_info["email"])
         return LoginResponse.from_orm(new_user)
     return LoginResponse.from_orm(user)
