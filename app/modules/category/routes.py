@@ -24,7 +24,7 @@ async def create_category_api(
         request: CreateCategoryRequest,
         db: Session = Depends(get_db)
 ):
-    user = get_user_by_id(db=db, user_id=request.user.id)
+    user = get_user_by_id(db=db, user_id=request.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="존재하지 않는 사용자입니다.")
 

@@ -30,14 +30,12 @@ async def crate_favorite_api(request: CreateFavoriteRequest, db: Session = Depen
 
     existing_message_id = get_favorite_by_message_id(db=db, message_id=request.message_id)
 
-
     if existing_message_id:
         raise HTTPException(status_code=400, detail="Favorite already exists")
 
     create_favorite(db=db, request=request)
     created_favorite = get_favorite_by_message_id(db=db, message_id=request.message_id)
 
-    print(created_favorite)
     return CreateFavoriteResponse.from_orm(created_favorite)
 
 

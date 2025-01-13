@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, Header, Path
 from fastapi.responses import JSONResponse
 from app.utils.gmail import create_gmail_service
 from app.utils.google_auth import verify_google_access
-from app.modules.article.service import parse_base_message_service
+from app.modules.article.service import parse_base_message_service, find_message_content_html
 from app.core.database import get_db
 from sqlalchemy.orm import Session
 from app.utils.validate_header import validate_header
@@ -41,17 +41,16 @@ async def get_article_list(
 
     query = f"from:{category.from_email}" if category.from_email else ""
     # 전체 메일 조회
-    results = gmail_service.users().messages().list(userId=request_user.google_id, q=query).execute()
+    results = gmail_service.users().messages().list(userId=request_user.google_id, q=query, maxResults=20).execute()
     messages = results["messages"]
     message_detail_list = []
     for message in messages:
         message_detail = gmail_service.users().messages().get(userId=request_user.google_id, id=message["id"]).execute()
-        if "html" not in message_detail["payload"]["mimeType"]:
-            continue
-        else:
-            payload = parse_base_message_service(message_detail)
-            message_detail_list.append(payload)
-
+        payload = {
+            **parse_base_message_service(message_detail),
+            "message_id": message["id"]
+        }
+        message_detail_list.append(payload)
     return JSONResponse(content=message_detail_list, status_code=200)
 
 
@@ -85,11 +84,13 @@ async def get_article_detail(
 
     message_detail = gmail_service.users().messages().get(userId=request_user.google_id, id=message_id).execute()
     payload = parse_base_message_service(message_detail)
-    content = message_detail["payload"]["body"]["data"]
+    content = find_message_content_html(message_detail["payload"])
     message_detail_payload = {
         **payload,
         "category_name": category.name,
         "content": content
     }
+
+    print(message_detail_payload)
 
     return JSONResponse(content=message_detail_payload, status_code=200)
