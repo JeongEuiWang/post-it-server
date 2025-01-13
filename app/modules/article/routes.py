@@ -42,7 +42,7 @@ async def get_article_list(
     query = f"from:{category.from_email}" if category.from_email else ""
     # 전체 메일 조회
     results = gmail_service.users().messages().list(userId=request_user.google_id, q=query, maxResults=20).execute()
-    messages = results["messages"]
+    messages = results.get("messages")
     message_detail_list = []
     for message in messages:
         message_detail = gmail_service.users().messages().get(userId=request_user.google_id, id=message["id"]).execute()
@@ -90,7 +90,4 @@ async def get_article_detail(
         "category_name": category.name,
         "content": content
     }
-
-    print(message_detail_payload)
-
     return JSONResponse(content=message_detail_payload, status_code=200)
